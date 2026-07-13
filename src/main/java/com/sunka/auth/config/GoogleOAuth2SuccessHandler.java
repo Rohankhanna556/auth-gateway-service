@@ -43,20 +43,28 @@ public class GoogleOAuth2SuccessHandler implements ServerAuthenticationSuccessHa
             .flatMap(userExists -> {
                 ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
                 if (userExists) {
-                    String token = jwtUtil.generateToken(email);
-                    log.info("User exists, issuing JWT and redirecting to /home");
-                    response.setStatusCode(HttpStatus.FOUND);
-                    response.getHeaders().setLocation(
-                        URI.create("http://localhost:3000/home?token=" + token)
-                    );
+                    // Reactive call to fetch user details
+                    return authServiceClient.findByEmail(email)
+                        .flatMap(userdetails -> {
+                            String username = userdetails.get("username").toString();
+                            String role = userdetails.get("role").toString();
+                            String token = jwtUtil.generateToken(username, email, role);
+
+                            log.info("User exists, issuing JWT and redirecting to /home");
+                            response.setStatusCode(HttpStatus.FOUND);
+                            response.getHeaders().setLocation(
+                                URI.create("http://localhost:3000/home?token=" + token)
+                            );
+                            return response.setComplete();
+                        });
                 } else {
                     log.warn("User not found, redirecting to /register");
                     response.setStatusCode(HttpStatus.FOUND);
                     response.getHeaders().setLocation(
                         URI.create("http://localhost:3000/register?email=" + email)
                     );
+                    return response.setComplete();
                 }
-                return response.setComplete();
             });
     }
 }

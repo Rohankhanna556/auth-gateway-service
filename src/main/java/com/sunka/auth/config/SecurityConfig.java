@@ -15,8 +15,8 @@ import io.jsonwebtoken.security.Keys;
 @Configuration
 public class SecurityConfig {
 
-    @Value("${jwt.secret}") 
-    String secret;
+    @Value("${jwt.secret}")
+    private String secret;
 
     private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
 
@@ -25,34 +25,38 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+                                                            ReactiveJwtDecoder jwtDecoder) {
         return http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .cors(cors -> cors.configurationSource(exchange -> {
+            	org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+                config.setAllowCredentials(true);
+                config.setAllowedOrigins(java.util.List.of("http://localhost:3000"));
+                config.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                config.setAllowedHeaders(java.util.List.of("*"));
+                return config;
+            }))
             .authorizeExchange(exchanges -> exchanges
                 .pathMatchers(
-                    // Swagger + OpenAPI docs
-                    "/swagger-ui.html",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/api-docs/**",
-
-                    // User service register endpoint
+                    "/swagger-ui.html", "/swagger-ui/**",
+                    "/v3/api-docs/**", "/api-docs/**",
                     "/user/api/users/register",
-
-                    // Auth service login endpoint
                     "/api/auth/login",
-
-                    // Google OAuth2 login flow
+                    "/book/api/books/**",
+                    "/book/api/chapters/**",
+                    "/book/api/pages/**",
                     "/oauth2/**"
                 ).permitAll()
                 .anyExchange().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2.authenticationSuccessHandler(googleOAuth2SuccessHandler))
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtDecoder(jwtDecoder)))
             .build();
     }
 
     @Bean
-    public ReactiveJwtDecoder reactiveJwtDecoder(@Value("${jwt.secret}") String secret) {
+    public ReactiveJwtDecoder reactiveJwtDecoder() {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
         return NimbusReactiveJwtDecoder.withSecretKey(key).build();
     }
