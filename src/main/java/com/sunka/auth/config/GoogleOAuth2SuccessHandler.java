@@ -4,6 +4,7 @@ import java.net.URI;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.core.Authentication;
@@ -23,10 +24,14 @@ public class GoogleOAuth2SuccessHandler implements ServerAuthenticationSuccessHa
 
     private final JwtUtil jwtUtil;
     private final AuthServiceClient authServiceClient;
+    private final String frontendBaseUrl;
 
-    public GoogleOAuth2SuccessHandler(JwtUtil jwtUtil, AuthServiceClient authServiceClient) {
+    public GoogleOAuth2SuccessHandler(JwtUtil jwtUtil,
+                                      AuthServiceClient authServiceClient,
+                                      @Value("${frontend.base-url}") String frontendBaseUrl) {
         this.jwtUtil = jwtUtil;
         this.authServiceClient = authServiceClient;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     @Override
@@ -36,32 +41,28 @@ public class GoogleOAuth2SuccessHandler implements ServerAuthenticationSuccessHa
         String email = oauthToken.getPrincipal().getAttribute("email");
         String name = oauthToken.getPrincipal().getAttribute("name");
 
-        log.info("Google login success for email={}, name={}", email, name);
+        log.info("Google login success for {}", email);
 
         return authServiceClient.validateCredentials(email, name)
-            .doOnNext(userExists -> log.info("UserService returned userExists={} for {}", userExists, email))
             .flatMap(userExists -> {
                 ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
                 if (userExists) {
-                    // Reactive call to fetch user details
                     return authServiceClient.findByEmail(email)
                         .flatMap(userdetails -> {
-                            String username = userdetails.get("username").toString();
-                            String role = userdetails.get("role").toString();
+                            String username = userdetails.getOrDefault("username", "").toString();
+                            String role = userdetails.getOrDefault("role", "USER").toString();
                             String token = jwtUtil.generateToken(username, email, role);
 
-                            log.info("User exists, issuing JWT and redirecting to /home");
                             response.setStatusCode(HttpStatus.FOUND);
                             response.getHeaders().setLocation(
-                                URI.create("http://localhost:3000/home?token=" + token)
+                                URI.create(frontendBaseUrl + "/home?token=" + token)
                             );
                             return response.setComplete();
                         });
                 } else {
-                    log.warn("User not found, redirecting to /register");
                     response.setStatusCode(HttpStatus.FOUND);
                     response.getHeaders().setLocation(
-                        URI.create("http://localhost:3000/register?email=" + email)
+                        URI.create(frontendBaseUrl + "/register?email=" + email)
                     );
                     return response.setComplete();
                 }

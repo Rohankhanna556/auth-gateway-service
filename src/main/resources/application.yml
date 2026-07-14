@@ -21,25 +21,38 @@ spring:
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "http://localhost:3000"   # React dev server
-            allowedMethods: "*"                      # allow all HTTP methods
-            allowedHeaders: "*"                      # allow all headers
-            allowCredentials: true                   # allow cookies/authorization headers if needed
+            allowedOrigins: "${FRONTEND_ORIGINS:http://localhost:3000, https://yourfrontend.onrender.com}"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
 
       routes:
         - id: user-service
-          uri: http://localhost:8081
+          uri: ${USER_SERVICE_URL:http://localhost:8081}   # local default, override in prod
           predicates:
             - Path=/user/api/**
           filters:
-            - StripPrefix=1   # strips "/user" → forwards "/api/users/register"
+            - StripPrefix=1
 
         - id: book-service
-          uri: http://localhost:8089
+          uri: ${BOOK_SERVICE_URL:http://localhost:8082}   # local default, override in prod
           predicates:
             - Path=/book/api/**
           filters:
-            - StripPrefix=1   # strips "/book" → forwards "/api/books"
-jwt:
-  secret: mysuperlongrandomsecretmysuperlongrandomsecret1234
+            - StripPrefix=1
 
+jwt:
+  secret: ${JWT_SECRET:mysuperlongrandomsecretmysuperlongrandomsecret1234}
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}/api/users
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - https://yourfrontend.onrender.com
+
+frontend:
+  base-url: ${FRONTEND_URL:https://yourfrontend.onrender.com}

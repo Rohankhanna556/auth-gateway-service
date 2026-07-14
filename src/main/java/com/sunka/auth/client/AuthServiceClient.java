@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -17,8 +18,10 @@ public class AuthServiceClient {
 
     private final WebClient webClient;
 
-    public AuthServiceClient(WebClient.Builder builder) {
-        this.webClient = builder.baseUrl("http://localhost:8081/api/users").build();
+    // Inject base URL from application.yml or environment variable
+    public AuthServiceClient(WebClient.Builder builder,
+                             @Value("${user.service.url}") String userServiceUrl) {
+        this.webClient = builder.baseUrl(userServiceUrl).build();
     }
 
     public Mono<Boolean> validateCredentials(String username, String name) {
@@ -35,7 +38,7 @@ public class AuthServiceClient {
                     return Mono.just(false);
                 });
     }
-    
+
     public Mono<Map<String, Object>> findByEmail(String email) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -50,7 +53,7 @@ public class AuthServiceClient {
                     return Mono.just(Collections.emptyMap());
                 });
     }
-    
+
     public Mono<Map<String, Object>> findByUsername(String username) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -66,4 +69,3 @@ public class AuthServiceClient {
                 });
     }
 }
-

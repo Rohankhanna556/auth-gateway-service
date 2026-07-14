@@ -1,5 +1,8 @@
 package com.sunka.auth.config;
 
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -9,12 +12,15 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @Configuration
 public class GatewayConfig {
 
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    private String[] allowedOrigins;
+
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.addAllowedOrigin("http://localhost:3000"); // React dev server
-        corsConfig.addAllowedMethod("*"); // GET, POST, PUT, DELETE, etc.
-        corsConfig.addAllowedHeader("*"); // Allow all headers
+        corsConfig.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        corsConfig.addAllowedMethod("*"); // allow all HTTP methods
+        corsConfig.addAllowedHeader("*"); // allow all headers
         corsConfig.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -23,4 +29,3 @@ public class GatewayConfig {
         return new CorsWebFilter(source);
     }
 }
-

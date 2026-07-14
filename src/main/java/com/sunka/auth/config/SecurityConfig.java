@@ -12,11 +12,17 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import io.jsonwebtoken.security.Keys;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Configuration
 public class SecurityConfig {
 
     @Value("${jwt.secret}")
     private String secret;
+
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    private String[] allowedOrigins;  // safer than List<String> with @Value
 
     private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
 
@@ -30,11 +36,11 @@ public class SecurityConfig {
         return http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .cors(cors -> cors.configurationSource(exchange -> {
-            	org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+                org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
                 config.setAllowCredentials(true);
-                config.setAllowedOrigins(java.util.List.of("http://localhost:3000"));
-                config.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
-                config.setAllowedHeaders(java.util.List.of("*"));
+                config.setAllowedOrigins(Arrays.asList(allowedOrigins));
+                config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
                 return config;
             }))
             .authorizeExchange(exchanges -> exchanges
