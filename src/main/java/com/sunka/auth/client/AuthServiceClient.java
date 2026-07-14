@@ -68,4 +68,19 @@ public class AuthServiceClient {
                     return Mono.just(Collections.emptyMap());
                 });
     }
+
+	public Mono<Boolean> validateCredentialsByEmail(String email) {
+		return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/exists-by-email")
+                        .queryParam("email", email.toLowerCase())
+                        .build())
+                .retrieve()
+                .bodyToMono(Boolean.class)
+                .doOnNext(result -> log.info("UserService exists check for {} returned {}", email, result))
+                .onErrorResume(e -> {
+                    log.error("Error calling UserService for {}: {}", email, e.getMessage());
+                    return Mono.just(false);
+                });
+	}
 }

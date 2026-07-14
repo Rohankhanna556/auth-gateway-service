@@ -39,13 +39,19 @@ public class GoogleOAuth2SuccessHandler implements ServerAuthenticationSuccessHa
                                               Authentication authentication) {
         OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
         String email = oauthToken.getPrincipal().getAttribute("email");
-        String name = oauthToken.getPrincipal().getAttribute("name");
-
         log.info("Google login success for {}", email);
 
-        return authServiceClient.validateCredentials(email, name)
+        ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
+
+        if (email == null) {
+            log.error("Google did not return an email attribute");
+            response.setStatusCode(HttpStatus.FOUND);
+            response.getHeaders().setLocation(URI.create(frontendBaseUrl + "/login?error=missing_email"));
+            return response.setComplete();
+        }
+
+        return authServiceClient.validateCredentialsByEmail(email)
             .flatMap(userExists -> {
-                ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
                 if (userExists) {
                     return authServiceClient.findByEmail(email)
                         .flatMap(userdetails -> {
@@ -66,6 +72,15 @@ public class GoogleOAuth2SuccessHandler implements ServerAuthenticationSuccessHa
                     );
                     return response.setComplete();
                 }
+            })
+            .onErrorResume(err -> {
+                log.error("Error during Google login flow", err);
+                response.setStatusCode(HttpStatus.FOUND);
+                response.getHeaders().setLocation(
+                    URI.create(frontendBaseUrl + "/login?error=oauth2")
+                );
+                return response.setComplete();
             });
     }
+
 }
